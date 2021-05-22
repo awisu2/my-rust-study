@@ -1,0 +1,13 @@
+{
+  "editor.tabSize": 2,
+  // 改行コード
+  "files.eol": "\n",
+  // コマンドプロンプト
+  "[bat]" : {
+    "files.encoding": "shiftjis",
+    "files.eol": "\r\n",
+  },
+  // prettierである必要はない。これを指定しないとformatOnSaveがうまく動作しないっぽい
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+}
