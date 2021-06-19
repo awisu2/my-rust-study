@@ -105,3 +105,51 @@ cargo run
 
 - `use std::io;` を `use std::io::stdin` にしても動作するか？ > する
   - `io::stdin()` は　`stdin()` に修正する必要あり
+
+## Generating a Secret Number
+
+毎回変化する 1~100 のランダム値を生成し、ゲームを面白くしましょう  
+standard library にはまだ含まれていないので、Rust チームが提供する rand crate(library) を利用します
+
+f: Cargo.toml
+
+```toml
+[dependencies]
+rand = "0.8.3"
+```
+
+```bash
+$ cargo build
+    Updating crates.io index
+  Downloaded getrandom v0.2.3
+  Downloaded ppv-lite86 v0.2.10
+  Downloaded rand v0.8.3
+  Downloaded rand_chacha v0.3.0
+  Downloaded rand_core v0.6.2
+  Downloaded 5 crates (167.3 KB) in 2.70s
+   Compiling cfg-if v1.0.0
+   Compiling ppv-lite86 v0.2.10
+   Compiling getrandom v0.2.3
+   Compiling rand_core v0.6.2
+   Compiling rand_chacha v0.3.0
+   Compiling rand v0.8.3
+   Compiling guessing_game v0.1.0 (D:\develop\study\my-rust-study\ch02ProgrammingAGuessingGame\guessing_game)
+    Finished dev [unoptimized + debuginfo] target(s) in 14.30s
+```
+
+### 解説
+
+rand crate が取得されました
+
+- dependencies セクション
+  - プロジェクトでどの外部ライブラリのどのバージョンが必要かを記載します
+  - バージョンは標準的な Semantic Versioning を解釈します
+    - [Semantic Versioning 2\.0\.0 \| Semantic Versioning](https://semver.org/)
+    - 例: `^0.8.3` と記載することで 0.8.3 以上 0.9 未満で最新のバージョンを表現します
+  - この記載により利用されるバージョンの Api が、0.8.3 の public Api と互換性があるとみなします
+- crate は[crates\.io: Rust Package Registry](https://crates.io/) から入手されます
+  - Crates.io は、Rust のエコシステムで他のユーザが利用可能な形で、open source の Rust project が post されます
+- ここでは rand のみを記載しましたが、cargo は rand が依存している crates をチェックしダウンロード及びコンパイルしています
+- もしサイド `cargo build`を実行しても先程のような Download や Compile の表示はなく、Finished と出力されるでしょう
+  - Cargo.toml ファイル(レジストリ？)を変更しない限り、すでにダウンロード、コンパイルが完了していることを cargo は認識しているからです
+  - **main.rs** を書き換えた場合でも、変更に対する最小限のコンパイルのみが行われます
