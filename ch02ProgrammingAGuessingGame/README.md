@@ -30,6 +30,11 @@ cargo run
 f: src/main.rs
 
 ```rust
+// use: standard library 内の io ライブラリをスコープに入れる
+//
+// rustはすべてのプログラムに std::prelude がスコープに入っていますが、
+// それ以外のライブラリが必要な場合は use ステートメントで取り込む必要があります
+//
 use std::io;
 
 fn main() {
@@ -37,12 +42,19 @@ fn main() {
 
     println!("Please input your guess.");
 
+    // let: 変数の生成。 default では immutable(変更不可)
+    // mut: mutable(可変) にする
     let mut guess = String::new();
 
     io::stdin()
+        // 入力待ち
         .read_line(&mut guess)
+        // expect(): `io::Result` の関数でエラー処理を行う
+        // read_line() は、`io::Result`を返却する
+        // 記載しない場合コンパイルエラーとなる
         .expect("Failed to read line");
 
+    // {} はプレースホルダー、引数と一致する
     println!("You guessed: {}", guess);
 }
 ```
@@ -153,3 +165,142 @@ rand crate が取得されました
 - もしサイド `cargo build`を実行しても先程のような Download や Compile の表示はなく、Finished と出力されるでしょう
   - Cargo.toml ファイル(レジストリ？)を変更しない限り、すでにダウンロード、コンパイルが完了していることを cargo は認識しているからです
   - **main.rs** を書き換えた場合でも、変更に対する最小限のコンパイルのみが行われます
+- Cargo.lock ファイルによる再ビルド性の保証
+  - cargo はあなたや他の人が同じアーティファクトによって、いつでも再ビルドする仕組みを補修しています
+  - `cargo build`を実行したときに、実際にインストールされた package 情報が、Cargo.lock に記載されます
+    - これ以降、Cargo.lock に記載されたバージョンの Crage がインストールおよび使用されるようになります
+- `crate update`: Crate のアップデートと新しいバージョンの取得
+  - Cargo.lock を除外し、Cargo.toml に記載された内容での最終バージョンを取得します
+  - 結果は Cargo.lock に上書きされます
+  - 細かいことは、Chapter14 で説明します
+
+### ランダム番号の生成
+
+f: src/main.rs
+
+```rust
+use std::io;
+use rand::Rng;
+
+fn main() {
+    println!("Guess the number!");
+
+    let secret_number = rand::thread_rng().gen_range(1..101);
+
+    println!("The secret number is: {}", secret_number);
+
+    println!("Please input your guess.");
+
+    let mut guess = String::new();
+
+    io::stdin()
+        .read_line(&mut guess)
+        .expect("Failed to read line");
+
+    println!("You guessed: {}", guess);
+}
+```
+
+- `use rand::Rng` を追加しました。Rng はランダム番号を生成します
+  - この trait(英訳：特性)は、これらを利用する際にスコープに入っている必要があります。
+    - 詳細は Chapter10 にて
+- `rand::thread_rng()` : ランダム関数のジェネレータを提供
+  - これはローカルスレッドで実行され OS によってシードされます(多分ランダム性の保証の話)
+- `gen_range()`: 引数に range expression を取り、ランダム数を生成する
+  - Rng trait によって定義されているため利用できる
+- range expression: 範囲指定について
+  - `start..end` という書き方で、範囲指定ができる
+  - 開始数は含むが、終了数は含まないため `1..101` で "1 <= x < 101" となる
+    - `1..=100` と記載してもよい
+
+### create の使用方法について
+
+- 各 crate や、trait の利用方法は crate ドキュメントに記載されています
+- `cargo doc --open` によってドキュメント が生成され、ブラウザで閲覧できます
+  - 作られるのは Cargo.toml に記載されている dependencies に依存します
+  - 気になった crate をサイドバーから選んで閲覧してください
+
+### 番号比較
+
+```rs
+use rand::Rng;
+use std::cmp::Ordering;
+use std::io;
+
+fn main() {
+    // --snip--
+
+    println!("You guessed: {}", guess);
+
+    match guess.cmp(&secret_number) {
+        Ordering::Less => println!("Too small!"),
+        Ordering::Greater => println!("Too big!"),
+        Ordering::Equal => println!("You win!"),
+    }
+}
+```
+
+- `std::cmp::Ordering;`は、enum です
+  - Result と似ていますが、 `Less`, `Greater`, `Equal` のいずれかです
+- cmp メソッドは、比較できる値なら何でも比較し、Ordering enum を返却します
+  - 比較したい対象のリファレンスを引数に取ります
+- match 式
+  - arms({}のこと)で構成され、先頭の引数と値が一致したときに実行する式で構成されます
+  - match は様々な機能を有しており、Chapter6, 18 で説明します
+- ビルドエラー
+  - rust は、強力な static type system を保有しています。
+    - 型推論もありますヨ
+  - 上記のコードは guess が String、secret_number が Int のため型違いによりエラーになります
+  - i32, u32, i64 など複数の数値型が存在します　(default: i32)
+    - u: unsigned, 数値: bit
+
+### 型変換
+
+最終的に、私達は入力値を数値に変換する必要があります
+
+```rs
+    let guess: u32 = guess.trim().parse().expect("Please type a number!");
+```
+
+- guess を上書きしているますが大丈夫でしょうか？ 大丈夫です
+- この機能は shadowing といい、一つの値を外の型に変換して利用できます
+  - これにより一つの引数を型推論で利用することが可能です(詳細は chapter3)
+- `trim()` は入力により発生する、空白や、改行文字を削除します
+- `parse()`は数種類の数値タイプを解析します。そのため変換後の型を指定しておく必要があります
+  - `:` のあとの `u32` annotation(注釈) により型を指定しています
+  - u32 は小さな正の値としては良い選択です。(他の型については chapter3)
+- これで同じ方による比較が可能になりました
+- `parse()` の返却値は `Result`で、上記でも記載しているように`expect()`によって処理されています
+
+### 複数回できるようにし、正解時に終了、数値以外の入力に対応
+
+```rs
+    // --snip--
+
+    loop {
+        // --snip--
+
+        let guess: u32 = match guess.trim().parse() {
+            Ok(num) => num,
+            Err(_) => continue,
+        };
+
+        // --snip--
+
+        match guess.cmp(&secret_number) {
+            Ordering::Less => println!("Too small!"),
+            Ordering::Greater => println!("Too big!"),
+            Ordering::Equal => {
+                println!("You win!");
+                break;
+            }
+        }
+    }
+```
+
+- `loop`によってなんども入力が行われるようになりました
+  - 内部に移植したコードのインデントは合わせるようにしましょう
+- `parse()` の返却値 `Result` を match で判定するようにしています
+  - 失敗時、`continue`により、loop を最初からやり直します
+- `guess.cmp(&secret_number)`での判定で `Ordering::Equal`のとき`break;`により、loop を抜けています
+- これで、guessing game(推測ゲーム)が完成です
